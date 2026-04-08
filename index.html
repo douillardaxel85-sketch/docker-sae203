@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAE 2.03 - Rapport Docker Samba</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f0f2f5; }
+        header { background: #2c3e50; color: white; padding: 2rem; text-align: center; border-radius: 10px; margin-bottom: 20px; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        code { background: #e8e8e8; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; color: #e74c3c; }
+        pre { background: #2d3436; color: #dfe6e9; padding: 15px; border-radius: 8px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>SAE 2.03 : Installation de Services Réseaux</h1>
+    <p>Service de Partage de Fichiers (Samba) sous Docker</p>
+</header>
+
+<div class="card">
+    <h2>1. Introduction</h2>
+    <p>Ce projet consiste à déployer un serveur de fichiers sécurisé en utilisant la technologie de conteneurisation <strong>Docker</strong>. Nous avons choisi le service <strong>Samba</strong> pour sa compatibilité universelle et sa gestion fine des droits utilisateurs.</p>
+</div>
+
+<div class="card">
+    <h2>2. Choix Techniques</h2>
+    <ul>
+        <li><strong>Base :</strong> Debian Latest (Contrainte de la SAE)</li>
+        <li><strong>Service :</strong> Samba (smbd)</li>
+        <li><strong>Ports :</strong> 445 (SMB) mappé sur 4445 pour éviter les conflits Windows.</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>3. Preuve de fonctionnement</h2>
+    <p>Le serveur a été vérifié à l'aide de la commande <code>ps aux</code> montrant les processus actifs :</p>
+    <pre>USER  PID %CPU %MEM  COMMAND
+root    1  0.0  0.1  smbd --foreground --no-process-group</pre>
+</div>
+
+</body>
+</html>
