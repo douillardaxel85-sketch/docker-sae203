@@ -1,42 +1,57 @@
-import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpExchange;
 import java.io.*;
-import java.net.InetSocketAddress;
+import java.net.*;
+import java.nio.file.*;
 
 public class ServeurDeFichiers
 {
 	public static void main(String[] args) throws IOException
 	{
-		HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
-		
-		server.createContext("/", new ListeFichiersHandler());
-		server.setExecutor(null);
-		
-		System.out.println("Serveur Java lancé sur http://localhost:8080");
-		server.start();
-	}
-}
+		ServerSocket server = new ServerSocket(8080);
+		System.out.println("Serveur actif sur le port 8080...");
 
-class ListeFichiersHandler implements HttpHandler
-{
-	public void handle(HttpExchange exchange) throws IOException
-	{
-		File dossier = new File("./partage");
-		String contenu = "<html><head><meta charset='utf-8'></head><body>";
-		contenu += "<h1>Dépôt de fichiers SAE 2.03</h1><ul>";
-		
-		if (dossier.exists() && dossier.isDirectory())
-			for (File f : dossier.listFiles())
-				contenu += "<li>" + f.getName() + "</li>";
-		else
-			contenu += "<li>Attention : Dossier de partage introuvable.</li>";
+		while (true)
+		{
+			Socket client = server.accept();
+			BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
+			OutputStream out = client.getOutputStream();
 
-		contenu += "</ul></body></html>";
-		
-		exchange.sendResponseHeaders(200, contenu.getBytes().length);
-		OutputStream os = exchange.getResponseBody();
-		os.write(contenu.getBytes());
-		os.close();
+			String line = in.readLine();
+			if (line != null)
+			{
+				String[] requestParts = line.split(" ");
+				String path = requestParts[1];
+
+				if (path.equals("/"))
+				{
+					String content = "<html><head><meta charset='UTF-8'></head><body><h1>📂 Liste des fichiers</h1><ul>";
+					File folder = new File("/app/partage");
+					File[] list = folder.listFiles();
+
+					if (list != null)
+						for (File f : list)
+							if (f.isFile())
+								content += "<li><a href='/" + f.getName() + "'>" + f.getName() + "</a></li>";
+
+					content += "</ul></body></html>";
+					String header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+					out.write(header.getBytes());
+					out.write(content.getBytes());
+				}
+				else
+				{
+					File file = new File("/app/partage" + path);
+					if (file.exists() && file.isFile())
+					{
+						byte[] data = Files.readAllBytes(file.toPath());
+						String header = "HTTP/1.1 200 OK\r\n" +
+										"Content-Length: " + data.length + "\r\n" +
+										"Content-Disposition: attachment; filename=\"" + file.getName() + "\"\r\n\r\n";
+						out.write(header.getBytes());
+						out.write(data);
+					}
+				}
+			}
+			client.close();
+		}
 	}
 }
