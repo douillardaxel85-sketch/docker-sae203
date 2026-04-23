@@ -1,57 +1,112 @@
+package backend;
+
 import java.io.*;
 import java.net.*;
-import java.nio.file.*;
+import javax.swing.JTextArea;
 
 public class ServeurDeFichiers
 {
-	public static void main(String[] args) throws IOException
+	private static ServerSocket srv;
+	private static boolean actif = false;
+
+	public static void lancer(int port, String dossier, JTextArea log)
 	{
-		ServerSocket server = new ServerSocket(8080);
-		System.out.println("Serveur actif sur le port 8080...");
+		new Thread(() -> demarrer(port, dossier, log)).start();
+	}
 
-		while (true)
+	public static void main(String[] args)
+	{
+		demarrer(8080, "partage", null);
+	}
+
+	public static void arreter(JTextArea log)
+	{
+		try
 		{
-			Socket client = server.accept();
-			BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
-			OutputStream out = client.getOutputStream();
-
-			String line = in.readLine();
-			if (line != null)
-			{
-				String[] requestParts = line.split(" ");
-				String path = requestParts[1];
-
-				if (path.equals("/"))
-				{
-					String content = "<html><head><meta charset='UTF-8'></head><body><h1>📂 Liste des fichiers</h1><ul>";
-					File folder = new File("/app/partage");
-					File[] list = folder.listFiles();
-
-					if (list != null)
-						for (File f : list)
-							if (f.isFile())
-								content += "<li><a href='/" + f.getName() + "'>" + f.getName() + "</a></li>";
-
-					content += "</ul></body></html>";
-					String header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-					out.write(header.getBytes());
-					out.write(content.getBytes());
-				}
-				else
-				{
-					File file = new File("/app/partage" + path);
-					if (file.exists() && file.isFile())
-					{
-						byte[] data = Files.readAllBytes(file.toPath());
-						String header = "HTTP/1.1 200 OK\r\n" +
-										"Content-Length: " + data.length + "\r\n" +
-										"Content-Disposition: attachment; filename=\"" + file.getName() + "\"\r\n\r\n";
-						out.write(header.getBytes());
-						out.write(data);
-					}
-				}
-			}
-			client.close();
+			actif = false;
+			if (srv != null) srv.close();
+			if (log != null) log.append("Serveur arrete.\n");
 		}
+		catch (IOException e)
+		{
+			if (log != null) log.append("Erreur lors de l'arret.\n");
+		}
+	}
+
+	private static void demarrer(int port, String dossier, JTextArea log)
+	{
+		try
+		{
+			srv = new ServerSocket(port);
+			actif = true;
+			String msg = "Serveur actif sur le port " + port;
+
+			if (log != null) log.append(msg + "\n");
+			else System.out.println(msg);
+
+			while (actif)
+			{
+				Socket soc = srv.accept();
+				new Thread(() -> gerer(soc, dossier, log)).start();
+			}
+		}
+		catch (IOException e)
+		{
+			if (actif && log != null) log.append("Erreur srv : " + e.getMessage() + "\n");
+			actif = false;
+		}
+	}
+
+	private static void gerer(Socket soc, String dossier, JTextArea log)
+	{
+		try
+		{
+			DataInputStream in = new DataInputStream(soc.getInputStream());
+			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
+			String cmd = in.readUTF();
+
+			if (cmd.equals("LISTE"))
+			{
+				File d = new File(dossier);
+				if (!d.exists()) d.mkdir();
+				String res = "";
+				for (File f : d.listFiles())
+					if (f.isFile()) res += f.getName() + ";";
+				out.writeUTF(res);
+			}
+
+			if (cmd.equals("ENVOI"))
+			{
+				String nom = in.readUTF();
+				long taille = in.readLong();
+				if (log != null) log.append("Reception : " + nom + "\n");
+				
+				FileOutputStream fos = new FileOutputStream(dossier + "/" + nom);
+				byte[] buf = new byte[4096];
+				int lus;
+				long total = 0;
+				while (total < taille && (lus = in.read(buf, 0, (int)Math.min(buf.length, taille - total))) != -1)
+				{
+					fos.write(buf, 0, lus);
+					total += lus;
+				}
+				fos.close();
+			}
+
+			if (cmd.equals("RECOIT"))
+			{
+				String nom = in.readUTF();
+				File f = new File(dossier, nom);
+				out.writeLong(f.length());
+				FileInputStream fis = new FileInputStream(f);
+				byte[] buf = new byte[4096];
+				int lus;
+				while ((lus = fis.read(buf)) != -1)
+					out.write(buf, 0, lus);
+				fis.close();
+			}
+			soc.close();
+		}
+		catch (Exception e) {}
 	}
 }

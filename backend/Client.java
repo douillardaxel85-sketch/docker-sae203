@@ -1,48 +1,75 @@
+package backend;
+
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
 
 public class Client
 {
-	private String machine;
+	private String hote;
 	private int port;
-	private String nomFichier;
 
-	public Client(String machine, int port, String nomFichier)
+	public Client(String hote, int port)
 	{
-		this.machine = machine;
+		this.hote = hote;
 		this.port = port;
-		this.nomFichier = nomFichier;
-		envoyerFichier();
 	}
 
-	private void envoyerFichier()
+	public String demanderListe()
 	{
-		try
+		try (Socket soc = new Socket(hote, port))
 		{
-			File fichier = new File(nomFichier);
-			if (!fichier.exists())
-				return;
-
-			Socket socket = new Socket(machine, port);
-			
-			InputStream inputFichier = new FileInputStream(fichier);
-			OutputStream outputReseau = socket.getOutputStream();
-
-			byte[] buffer = new byte[4096];
-			int nbOctetsLus;
-
-			while ((nbOctetsLus = inputFichier.read(buffer)) != -1)
-				outputReseau.write(buffer, 0, nbOctetsLus);
-
-			inputFichier.close();
-			outputReseau.flush();
-			socket.close();
-			
-			System.out.println("Fichier " + nomFichier + " envoyé avec succès !");
+			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
+			out.writeUTF("LISTE");
+			return new DataInputStream(soc.getInputStream()).readUTF();
 		}
-		catch (IOException e)
+		catch (Exception e) 
+		{ 
+			return ""; 
+		}
+	}
+
+	public void envoyerFichier(File f)
+	{
+		try (Socket soc = new Socket(hote, port))
 		{
-			System.err.println("Erreur lors de l'envoi : " + e.getMessage());
+			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
+			out.writeUTF("ENVOI");
+			out.writeUTF(f.getName());
+			out.writeLong(f.length());
+			FileInputStream fis = new FileInputStream(f);
+			byte[] buf = new byte[4096];
+			int l;
+			while ((l = fis.read(buf)) != -1) 
+				out.write(buf, 0, l);
+			fis.close();
 		}
+		catch (Exception e) {}
+	}
+
+	public void telechargerFichier(String nom)
+	{
+		try (Socket soc = new Socket(hote, port))
+		{
+			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
+			out.writeUTF("RECOIT");
+			out.writeUTF(nom);
+			
+			DataInputStream in = new DataInputStream(soc.getInputStream());
+			long taille = in.readLong();
+
+			String home = System.getProperty("user.home") + File.separator + "Downloads";
+			File dest = new File(home, nom);
+			FileOutputStream fos = new FileOutputStream(dest);
+			
+			byte[] buf = new byte[4096];
+			int l; long t = 0;
+			while (t < taille && (l = in.read(buf, 0, (int)Math.min(buf.length, taille-t))) != -1)
+			{ 
+				fos.write(buf, 0, l); 
+				t += l; 
+			}
+			fos.close();
+		}
+		catch (Exception e) {}
 	}
 }

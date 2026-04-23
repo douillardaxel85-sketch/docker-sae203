@@ -1,14 +1,15 @@
-FROM debian:latest
+FROM debian:stable
 
-RUN apt-get update && apt-get install -y \
-	default-jdk-headless \
-	&& apt-get clean \
-	&& rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y default-jdk-headless
 
 WORKDIR /app
-COPY ServeurDeFichiers.java .
 
-RUN javac ServeurDeFichiers.java && mkdir partage && touch partage/bienvenue_SAE.txt
+COPY . /app/backend
+
+RUN javac backend/ServeurDeFichiers.java
+
+RUN mkdir -p /app/partage
 
 EXPOSE 8080
-CMD ["java", "ServeurDeFichiers"]
+
+CMD ["java", "backend.ServeurDeFichiers"]
