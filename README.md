@@ -58,7 +58,7 @@ Note : Choisissez l'option 3 pour lancer simultanément le serveur et le client.
 Configuration Réseau
 Port par défaut : 8080
 
-Connexion distante : Pour connecter deux PC, remplacez localhost dans l'IHM par l'adresse IPv4 du PC hébergeant le serveur (ex: 192.168.1.XX).
+Connexion distante : Pour connecter deux PC, remplacez localhost dans l'IHM par l'adresse IPv4 du PC hébergeant le serveur.
 
 Développement et Git
 Le projet a suivi une méthodologie de développement par branches :
