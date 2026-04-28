@@ -1,5 +1,13 @@
 # SAE 2.03 - Serveur de Partage de Fichiers (Java & Docker)
 
+## Membre équipe B3
+
+FERRIER Mathys [C]
+
+DOUILLARD Axel [A]
+
+DUPONT Armand [A]
+
 ## Description
 Ce projet est une application de partage de fichiers en réseau local basée sur une architecture Client/Serveur via Sockets. Il permet de transformer une machine (ou un conteneur) en serveur de stockage, accessible par des clients graphiques pour l'envoi et la récupération de documents.
 
@@ -29,11 +37,11 @@ Le projet est décomposé en services clairs :
 ### Structure des dossiers
 ```text
 .
-├── backend/             # Code source du serveur et Dockerfile
-├── IHM/                 # Classes de l'interface graphique (Swing)
-├── partage/             # Dossier physique de stockage des fichiers
-├── docker-compose.yml   # Configuration de l'orchestration Docker
-├── Lanceur.java         # Utilitaire de lancement rapide (Menu CLI)
+├── backend/
+├── IHM/
+├── partage/
+├── LanceurClient.java
+├── Dockerfile
 └── README.md
 Installation et Utilisation
 Prérequis
@@ -41,19 +49,13 @@ Docker Desktop (avec moteur WSL 2 activé)
 
 Java JDK 17+ (pour le client local)
 
-Mode 1 : Déploiement avec Docker (Recommandé)
+Déploiement avec Docker (Recommandé)
 Lancer le serveur :
-docker-compose up --build
+docker start -a mon-serveur
 
 Lancer l'interface client (PC 2 ou local) :
-javac IHM/*.java backend/Client.java
-java IHM.FrameIhm
-
-Mode 2 : Test Local Rapide (Sans Docker)
-Pour tester l'application sur une seule machine sans virtualisation :
-javac backend/.java IHM/.java Lanceur.java
-java Lanceur
-Note : Choisissez l'option 3 pour lancer simultanément le serveur et le client.
+javac IHM/*.java backend/*.java
+java LanceurClient
 
 Configuration Réseau
 Port par défaut : 8080
@@ -63,11 +65,19 @@ Connexion distante : Pour connecter deux PC, remplacez localhost dans l'IHM par 
 Développement et Git
 Le projet a suivi une méthodologie de développement par branches :
 
-DockerMAJ : Optimisation de l'environnement conteneurisé.
+main
 
-ihm : Développement de l'interface graphique et du Drag & Drop.
+gh-pages
 
-main : Branche stable regroupant l'intégralité du socle technique fusionné.
+ihm 
+
+client 
+
+storage-volume
+
+java-serveur
+
+docker
 
 Objectifs Pédagogiques
 Maîtrise des protocoles de communication TCP/IP (Sockets).
@@ -77,3 +87,4 @@ Apprentissage de la conteneurisation applicative avec Docker.
 Développement d'interfaces événementielles en Java.
 
 Gestion de flux de données binaires et persistance.
+
