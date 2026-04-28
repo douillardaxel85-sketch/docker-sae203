@@ -2,111 +2,138 @@ package backend;
 
 import java.io.*;
 import java.net.*;
-import javax.swing.JTextArea;
 
 public class ServeurDeFichiers
 {
-	private static ServerSocket srv;
-	private static boolean actif = false;
-
-	public static void lancer(int port, String dossier, JTextArea log)
-	{
-		new Thread(() -> demarrer(port, dossier, log)).start();
-	}
-
 	public static void main(String[] args)
 	{
-		demarrer(8080, "partage", null);
-	}
-
-	public static void arreter(JTextArea log)
-	{
 		try
 		{
-			actif = false;
-			if (srv != null) srv.close();
-			if (log != null) log.append("Serveur arrete.\n");
-		}
-		catch (IOException e)
-		{
-			if (log != null) log.append("Erreur lors de l'arret.\n");
-		}
-	}
+			ServerSocket socketServeur = new ServerSocket(8080);
+			System.out.println("Service de fichiers actif sur le port 8080");
 
-	private static void demarrer(int port, String dossier, JTextArea log)
-	{
-		try
-		{
-			srv = new ServerSocket(port);
-			actif = true;
-			String msg = "Serveur actif sur le port " + port;
-
-			if (log != null) log.append(msg + "\n");
-			else System.out.println(msg);
-
-			while (actif)
+			while (true)
 			{
-				Socket soc = srv.accept();
-				new Thread(() -> gerer(soc, dossier, log)).start();
+				Socket socketClient = socketServeur.accept();
+				new Thread(() -> gerer(socketClient)).start();
 			}
 		}
-		catch (IOException e)
+		catch (IOException erreur)
 		{
-			if (actif && log != null) log.append("Erreur srv : " + e.getMessage() + "\n");
-			actif = false;
+			System.out.println("Erreur serveur : " + erreur.getMessage());
 		}
 	}
 
-	private static void gerer(Socket soc, String dossier, JTextArea log)
+	public static void gerer(Socket socketClient)
 	{
 		try
 		{
-			DataInputStream in = new DataInputStream(soc.getInputStream());
-			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
-			String cmd = in.readUTF();
+			DataInputStream fluxEntree = new DataInputStream(socketClient.getInputStream());
+			DataOutputStream fluxSortie = new DataOutputStream(socketClient.getOutputStream());
 
-			if (cmd.equals("LISTE"))
-			{
-				File d = new File(dossier);
-				if (!d.exists()) d.mkdir();
-				String res = "";
-				for (File f : d.listFiles())
-					if (f.isFile()) res += f.getName() + ";";
-				out.writeUTF(res);
-			}
+			String commande = fluxEntree.readUTF();
 
-			if (cmd.equals("ENVOI"))
-			{
-				String nom = in.readUTF();
-				long taille = in.readLong();
-				if (log != null) log.append("Reception : " + nom + "\n");
-				
-				FileOutputStream fos = new FileOutputStream(dossier + "/" + nom);
-				byte[] buf = new byte[4096];
-				int lus;
-				long total = 0;
-				while (total < taille && (lus = in.read(buf, 0, (int)Math.min(buf.length, taille - total))) != -1)
-				{
-					fos.write(buf, 0, lus);
-					total += lus;
-				}
-				fos.close();
-			}
+			if (commande.equals("LISTE"))
+				envoyerListe(fluxSortie);
 
-			if (cmd.equals("RECOIT"))
-			{
-				String nom = in.readUTF();
-				File f = new File(dossier, nom);
-				out.writeLong(f.length());
-				FileInputStream fis = new FileInputStream(f);
-				byte[] buf = new byte[4096];
-				int lus;
-				while ((lus = fis.read(buf)) != -1)
-					out.write(buf, 0, lus);
-				fis.close();
-			}
-			soc.close();
+			if (commande.equals("UPLOAD"))
+				recevoirFichier(fluxEntree);
+
+			if (commande.equals("DOWNLOAD"))
+				envoyerFichier(fluxEntree, fluxSortie);
+
+			socketClient.close();
 		}
-		catch (Exception e) {}
+		catch (IOException erreur)
+		{
+			System.out.println("Erreur socket client");
+		}
+	}
+
+	public static void envoyerListe(DataOutputStream fluxSortie)
+	{
+		try
+		{
+			File dossier = new File("/app/partage");
+			File[] tableauFichiers = dossier.listFiles();
+
+			if (tableauFichiers != null)
+			{
+				fluxSortie.writeInt(tableauFichiers.length);
+				for (File fichierCourant : tableauFichiers)
+					fluxSortie.writeUTF(fichierCourant.getName());
+			}
+			else
+				fluxSortie.writeInt(0);
+		}
+		catch (IOException erreur)
+		{
+			System.out.println("Erreur envoi liste");
+		}
+	}
+
+	public static void recevoirFichier(DataInputStream fluxEntree)
+	{
+		try
+		{
+			String nomFichier = fluxEntree.readUTF();
+			long tailleAttendue = fluxEntree.readLong();
+
+			FileOutputStream ecrivainFichier = new FileOutputStream("/app/partage/" + nomFichier);
+			byte[] tampon = new byte[4096];
+			int octetsLus;
+			long cumulRecu = 0;
+
+			while (cumulRecu < tailleAttendue && (octetsLus = fluxEntree.read(tampon)) != -1)
+			{
+				ecrivainFichier.write(tampon, 0, octetsLus);
+				cumulRecu += octetsLus;
+			}
+
+			ecrivainFichier.close();
+			System.out.println("Fichier recu : " + nomFichier);
+		}
+		catch (IOException erreur)
+		{
+			System.out.println("Erreur reception");
+		}
+	}
+
+	public static void envoyerFichier(DataInputStream fluxEntree, DataOutputStream fluxSortie)
+	{
+		try
+		{
+			String nomDemande = fluxEntree.readUTF();
+			File fichierCible = new File("/app/partage/" + nomDemande);
+
+			if (fichierCible.exists())
+			{
+				fluxSortie.writeLong(fichierCible.length());
+				FileInputStream lecteurFichier = new FileInputStream(fichierCible);
+				byte[] tampon = new byte[4096];
+				int octetsLus;
+
+				while ((octetsLus = lecteurFichier.read(tampon)) != -1)
+					fluxSortie.write(tampon, 0, octetsLus);
+
+				lecteurFichier.close();
+			}
+			else
+				fluxSortie.writeLong(-1);
+		}
+		catch (IOException erreur)
+		{
+			System.out.println("Erreur envoi");
+		}
+	}
+
+	public static void lancer(int port, String dossier, javax.swing.JTextArea logs)
+	{
+		logs.append("Mode Docker actif.\n");
+	}
+
+	public static void arreter(javax.swing.JTextArea logs)
+	{
+		logs.append("Service arrete.\n");
 	}
 }

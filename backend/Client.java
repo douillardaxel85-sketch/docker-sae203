@@ -2,74 +2,108 @@ package backend;
 
 import java.io.*;
 import java.net.*;
+import java.util.List;
+import java.util.ArrayList;
 
 public class Client
 {
-	private String hote;
-	private int port;
+	private String adresseServeur;
+	private int portServeur;
 
-	public Client(String hote, int port)
+	public Client(String adresseServeur, int portServeur)
 	{
-		this.hote = hote;
-		this.port = port;
+		this.adresseServeur = adresseServeur;
+		this.portServeur = portServeur;
 	}
 
-	public String demanderListe()
+	public List<String> demanderListe()
 	{
-		try (Socket soc = new Socket(hote, port))
+		List<String> listeNomsFichiers = new ArrayList<>();
+
+		try
 		{
-			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
-			out.writeUTF("LISTE");
-			return new DataInputStream(soc.getInputStream()).readUTF();
+			Socket socketClient = new Socket(adresseServeur, portServeur);
+			DataOutputStream fluxSortie = new DataOutputStream(socketClient.getOutputStream());
+			DataInputStream fluxEntree = new DataInputStream(socketClient.getInputStream());
+
+			fluxSortie.writeUTF("LISTE");
+
+			int nombreFichiers = fluxEntree.readInt();
+
+			for (int index = 0; index < nombreFichiers; index++)
+				listeNomsFichiers.add(fluxEntree.readUTF());
+
+			socketClient.close();
 		}
-		catch (Exception e) 
-		{ 
-			return ""; 
+		catch (IOException erreur)
+		{
+			System.out.println("Erreur client : " + erreur.getMessage());
+		}
+		return listeNomsFichiers;
+	}
+
+	public void envoyerFichier(File fichierAEnvoyer)
+	{
+		try
+		{
+			Socket socketEnvoi = new Socket(adresseServeur, portServeur);
+			DataOutputStream fluxSortie = new DataOutputStream(socketEnvoi.getOutputStream());
+
+			fluxSortie.writeUTF("UPLOAD");
+			fluxSortie.writeUTF(fichierAEnvoyer.getName());
+			fluxSortie.writeLong(fichierAEnvoyer.length());
+
+			FileInputStream lecteurFichier = new FileInputStream(fichierAEnvoyer);
+			byte[] tamponDonnees = new byte[4096];
+			int octetsLus;
+
+			while ((octetsLus = lecteurFichier.read(tamponDonnees)) != -1)
+				fluxSortie.write(tamponDonnees, 0, octetsLus);
+
+			lecteurFichier.close();
+			socketEnvoi.close();
+		}
+		catch (Exception erreur)
+		{
+			System.out.println("Erreur upload");
 		}
 	}
 
-	public void envoyerFichier(File f)
+	public void telechargerFichier(String nomFichierCible)
 	{
-		try (Socket soc = new Socket(hote, port))
+		try
 		{
-			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
-			out.writeUTF("ENVOI");
-			out.writeUTF(f.getName());
-			out.writeLong(f.length());
-			FileInputStream fis = new FileInputStream(f);
-			byte[] buf = new byte[4096];
-			int l;
-			while ((l = fis.read(buf)) != -1) 
-				out.write(buf, 0, l);
-			fis.close();
-		}
-		catch (Exception e) {}
-	}
+			Socket socketReception = new Socket(adresseServeur, portServeur);
+			DataOutputStream fluxSortie = new DataOutputStream(socketReception.getOutputStream());
+			DataInputStream fluxEntree = new DataInputStream(socketReception.getInputStream());
 
-	public void telechargerFichier(String nom)
-	{
-		try (Socket soc = new Socket(hote, port))
-		{
-			DataOutputStream out = new DataOutputStream(soc.getOutputStream());
-			out.writeUTF("RECOIT");
-			out.writeUTF(nom);
+			fluxSortie.writeUTF("DOWNLOAD");
+			fluxSortie.writeUTF(nomFichierCible);
 			
-			DataInputStream in = new DataInputStream(soc.getInputStream());
-			long taille = in.readLong();
+			long tailleFichier = fluxEntree.readLong();
 
-			String home = System.getProperty("user.home") + File.separator + "Downloads";
-			File dest = new File(home, nom);
-			FileOutputStream fos = new FileOutputStream(dest);
-			
-			byte[] buf = new byte[4096];
-			int l; long t = 0;
-			while (t < taille && (l = in.read(buf, 0, (int)Math.min(buf.length, taille-t))) != -1)
-			{ 
-				fos.write(buf, 0, l); 
-				t += l; 
+			if (tailleFichier != -1)
+			{
+				String cheminDownloads = System.getProperty("user.home") + File.separator + "Downloads";
+				File destination = new File(cheminDownloads, nomFichierCible);
+				FileOutputStream ecrivainFichier = new FileOutputStream(destination);
+				
+				byte[] tamponDonnees = new byte[4096];
+				int octetsLus; 
+				long cumulOctetsRecus = 0;
+
+				while (cumulOctetsRecus < tailleFichier && (octetsLus = fluxEntree.read(tamponDonnees, 0, (int)Math.min(tamponDonnees.length, tailleFichier - cumulOctetsRecus))) != -1)
+				{
+					ecrivainFichier.write(tamponDonnees, 0, octetsLus);
+					cumulOctetsRecus += octetsLus;
+				}
+				ecrivainFichier.close();
 			}
-			fos.close();
+			socketReception.close();
 		}
-		catch (Exception e) {}
+		catch (Exception erreur)
+		{
+			System.out.println("Erreur download");
+		}
 	}
 }

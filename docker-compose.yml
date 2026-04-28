@@ -1,9 +1,0 @@
-services:
-  srv-partage:
-    build: ./backend
-    container_name: mon-serveur-java
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./partage:/app/partage
-    restart: always

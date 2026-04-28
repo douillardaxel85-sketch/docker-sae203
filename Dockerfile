@@ -1,10 +1,10 @@
-FROM debian:stable
+FROM debian:latest
 
 RUN apt-get update && apt-get install -y default-jdk-headless
 
 WORKDIR /app
 
-COPY . /app/backend
+COPY backend /app/backend
 
 RUN javac backend/ServeurDeFichiers.java
 
