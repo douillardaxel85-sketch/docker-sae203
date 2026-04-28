@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAE 2.03 - Projet transfert de fichier</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f0f2f5; }
+        header { background: #2c3e50; color: white; padding: 2rem; text-align: center; border-radius: 10px; margin-bottom: 20px; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        code { background: #e8e8e8; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; color: #e74c3c; }
+        pre { background: #2d3436; color: #dfe6e9; padding: 15px; border-radius: 8px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>SAE 2.03 : Installation de Services Réseaux</h1>
+    <p>Service de Partage de Fichiers sous Docker</p>
+</header>
+<div class="card">
+	<h2>Description</h2>
+	<p>Ce projet est une application de partage de fichiers en réseau local basée sur une architecture Client/Serveur via Sockets. Il permet de transformer une machine (ou un conteneur) en serveur de stockage, accessible par des clients graphiques pour l'envoi et la récupération de documents.</p>
+	<p>L'objectif principal est la mise en place d'un service réseau robuste, isolé dans un environnement Docker et piloté par une interface Java Swing.</p>
+</div>
+<div class="card">
+	<h2>Fonctionnalités</h2>
+	<h3>Fonctionnalités implémentées</h3>
+	<ul>
+		<li>Liste des fichiers : Consultation en temps réel des fichiers présents sur le serveur.</li>
+		<li>Upload (Envoi) : Transfert de fichiers du PC client vers le serveur.</li>
+		<li>Download (Réception) : Téléchargement de fichiers du serveur vers le dossier Downloads de l'utilisateur.</li>
+		<li>Drag & Drop : Support du glisser-déposer directement dans l'interface pour l'envoi de fichiers.</li>
+		<li>Multi-PC : Capacité de connexion entre deux machines physiques distinctes sur le même réseau local.</li>
+	</ul>
+	<h3>Aspects Techniques</h3>
+	<ul>
+		<li>Architecture Sockets : Communication via flux de données (DataInputStream / DataOutputStream).</li>
+		<li>Multithreading : Gestion de plusieurs requêtes simultanées sur le serveur.</li>
+		<li>Persistance : Utilisation de volumes Docker pour conserver les fichiers même après l'arrêt du conteneur.</li>
+	</ul>
+</div>
+<div class="card">
+	<h2>Architecture du projet</h2>
+	<p>Le projet est décomposé en services clairs :</p>
+	<ul>
+		<li>Serveur (Backend) : Application Java tournant sous Debian Stable (Docker) gérant les entrées/sorties fichiers.</li>
+		<li>Client (IHM) : Interface graphique Swing permettant de piloter les échanges.</li>
+		<li>Stockage : Volume synchronisé entre l'hôte (Windows) et le conteneur (Linux) via le dossier partage/.</li>
+	</ul>
+	<h3>Structure des dossiers</h3>
+	<pre>.
+├── backend/
+├── IHM/
+├── partage/
+├── LanceurClient.java
+├── Dockerfile
+└── README.md
+Installation et Utilisation
+Prérequis
+Docker Desktop (avec moteur WSL 2 activé)
+
+Java JDK 17+ (pour le client local)
+
+Déploiement avec Docker (Recommandé)
+Lancer le serveur :
+docker start -a mon-serveur
+
+Lancer l'interface client (PC 2 ou local) :
+javac IHM/*.java backend/*.java
+java LanceurClient
+
+Configuration Réseau
+Port par défaut : 8080
+
+Connexion distante : Pour connecter deux PC, remplacez localhost dans l'IHM par l'adresse IPv4 du PC hébergeant le serveur.
+
+Développement et Git
+Le projet a suivi une méthodologie de développement par branches :
+
+main
+
+gh-pages
+
+ihm 
+
+client 
+
+storage-volume
+
+java-serveur
+
+docker
+
+Objectifs Pédagogiques
+Maîtrise des protocoles de communication TCP/IP (Sockets).
+
+Apprentissage de la conteneurisation applicative avec Docker.
+
+Développement d'interfaces événementielles en Java.
+
+Gestion de flux de données binaires et persistance.</pre>
+</div>
+<div class="card">
+	<h2>Tests</h2>
+	<ol>
+		<li>Connection locale</li>
+		<li>Ajout de fichier dans le dossier partage </li>
+		<li>Ajout de en <i>drag and drop</i></li>
+		<li>Test entre deux machines différentes </li>
+	</ol>
+</div>
+</body>
+</html>
